@@ -531,23 +531,6 @@ EOF
     @ irun++
     echo "set initCond     =  $restart_file"  > $reload_file
 
-
-  
-  ########################################################
-  # Post - process
-  ########################################################
-  mkdir -p $outputDir/post_processed
-  mkdir -p $outputDir/post_processed/output
-
-  set FILES = $outputDir/history/
-  foreach i (`find $FILES -type f -name "*.nc.*.cpio"`)
-    echo "Post process: $i"
-    cd $final_files
-    cpio -idv < $i 
-
-  #To merge the netcdf files for each year and make plots 
-  python3 $root/Post_processing.py
-
 #########################################################################
 #########################################################################
 end # runsPerScript
@@ -556,6 +539,22 @@ end # runsPerScript
 
 
 echo end_of_run
+
+########################################################
+# Post - process
+########################################################
+set echo
+  mkdir -p $outputDir/post_processed
+  mkdir -p $outputDir/post_processed/output
+
+  set FILES = $outputDir/history/
+  foreach i (`find $FILES -type f -name "*.nc.*.cpio"`)
+    echo "Processing $i"
+    cd $final_files
+    cpio -idv < $i 
+end
+
+python3 $root/fms_hs_winnie/Post-processing/Post_processing.py
+
 echo "NOTE: Natural end-of-script for $scriptName."
-#qsub /YOUR OWN PATH/ite_d7_new.csh
 exit 0
