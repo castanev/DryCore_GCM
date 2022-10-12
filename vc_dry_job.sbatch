@@ -24,6 +24,7 @@ set echo
 set echo
 
   set name = exp2_NCEPsymm
+
   #set equilibrium_option = 'Held_Suarez'
   #set equilibrium_option = 'JFV'
   
@@ -31,9 +32,9 @@ set echo
   set equilibrium_option = 'from_file' 
 
   # prescribed drag file
-  set drag_file_name = /home/castanev/DryCore_Wu/data/drag    # drag file name
+  set drag_file_name = /home/castanev/DryCore_Wu/data/drag.txt    # drag file name
   
-  #set temp_file = /home/castanev/DryCore_Wu/data/Mean_state_T_NCEP_symmetrical_4D.nc 
+  #set temp_file = /home/castanev/$name/data/Mean_state_T_NCEP_symmetrical_4D.nc 
   set temp_file = /home/castanev/DryCore_Wu/data/Mean_state_T_NCEP_symmetrical_4D.nc
   set tau_file = /home/castanev/DryCore_Wu/data/tau_ctr.nc
 
@@ -531,30 +532,28 @@ EOF
     @ irun++
     echo "set initCond     =  $restart_file"  > $reload_file
 
+
 #########################################################################
 #########################################################################
 end # runsPerScript
 #########################################################################
 #########################################################################
 
-
 echo end_of_run
 
-########################################################
-# Post - process
-########################################################
 set echo
   mkdir -p $outputDir/post_processed
   mkdir -p $outputDir/post_processed/output
 
   set FILES = $outputDir/history/
   foreach i (`find $FILES -type f -name "*.nc.*.cpio"`)
-    echo "Processing $i"
+    echo "$i"
     cd $final_files
     cpio -idv < $i 
 end
 
-python3 $root/fms_hs_winnie/Post-processing/Post_processing.py
-
 echo "NOTE: Natural end-of-script for $scriptName."
 exit 0
+
+
+
