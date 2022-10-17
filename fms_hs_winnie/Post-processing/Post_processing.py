@@ -1,4 +1,5 @@
 import datetime as dt
+from operator import le
 
 from dateutil.relativedelta import relativedelta
 import matplotlib.pyplot as plt
@@ -20,18 +21,19 @@ import re
 
 # =====================================================================================================================================================
 # ============================================================== Obtaining output files Dry core GCM ==================================================
-name = 'exp2_NCEPsymm'
+name = 'exp4_NCEPsymm_noSeason_noTop'
 path_output = f'/scratch/brown/castanev/DryCore_Wu/output/{name}/'
 path_data = f'{path_output}post_processed/'
 path_output_final = f'{path_output}post_processed/output/'
 path_figures = f'/home/castanev/DryCore_Wu/Post_processing/'
 list_data = np.sort(os.listdir(f'{path_data}'))
 list_data = np.delete(list_data, -1)
-list_begindates = set([re.findall(r'\d+', list_data[i][:13])[0] for i in range(len(list_data))])
+list_begindates = np.unique(np.sort(np.array([re.findall(r'\d+', list_data[i][:13])[0] for i in range(len(list_data))])))
 
 datat = Dataset(f'{path_data}{list_data[0]}')
 lons = np.array(datat['lon'])
 levels = np.array(datat['pfull'])
+
 
 
 for datee in list_begindates:
@@ -131,91 +133,84 @@ for datee in list_begindates:
     varr3 = ncfile.createVariable('vcomp', 'f', ('time', 'lev', 'lat', 'lon'))
     varr3[:,:,:,:] = datav_m[:,:,:,:]
     ncfile.close()
-       
+      
 
-shutil.rmtree(f'{path_output}history/')
+#shutil.rmtree(f'{path_output}history/')
 
 
 list_data = np.sort(os.listdir(f'{path_data}/output/'))
-cont_d = 0
-for i in list_data: 
-    if f'.atmos_daily.nc' in i:        
-        cont_d = cont_d + 1
-        data_i_nc = Dataset(f'{path_data}/output/{i}')
-        datat_i = np.array(data_i_nc['temp'])  #(time, pfull, lat, lon) 
-
-        if cont_d == 1: datat_d = datat_i
-        else: datat_d = np.concatenate((datat_d, datat_i), axis = 0)
-
-
 
 nc_name = f'00000000.atmos_daily.nc'
 ncfile = Dataset(f'{path_output_final}{nc_name}')
 lat_d = np.array(ncfile['lat'])
-lat_m = np.array(ncfile['lat'])  
+lev   = np.array(ncfile['lev'])
+pos_300 = np.where(abs(lev-300) == np.min(abs(lev-300)))[0][0]
 
+
+for num, i in enumerate(list_begindates): 
+    if f'{i}.atmos_daily.nc' in list_data:        
+        data_i_nc = Dataset(f'{path_data}/output/{i}.atmos_daily.nc')
+        datat_i = np.array(data_i_nc['temp'])[:,-1,:,:]  #(time, lev, lat, lon) 
+
+        if num == 0: datat_d = datat_i
+        #elif num == 16: break
+        else: datat_d = np.concatenate((datat_d, datat_i), axis = 0)
 
 
 # Saving daily files
-time = np.arange(1, datat_d.shape[0], 1)
+time = np.arange(1, datat_d.shape[0]+1, 1)
 nc_name = f't.atmos_daily.nc'
 ncfile = Dataset(f'{path_output_final}{nc_name}', 'w')
 
 ncfile.createDimension('lat', len(lat_d))
 ncfile.createDimension('lon', len(lons))
 ncfile.createDimension('time', len(time))
-ncfile.createDimension('lev', len(levels))
 
 var_lats = ncfile.createVariable('lat', 'f', ('lat'))
 var_lons = ncfile.createVariable('lon', 'f', ('lon'))
 var_time = ncfile.createVariable('time', 'f', ('time'))
-var_lev = ncfile.createVariable('lev', 'f', ('lev'))
 
 var_lats[:] = lat_d
 var_lons[:] = lons
 var_time[:] = time
-var_lev[:] = levels
 
-varr = ncfile.createVariable('temp', 'f', ('time', 'lev', 'lat', 'lon'))
-varr[:,:,:,:] = datat_d[:,:,:,:]
+varr = ncfile.createVariable('temp', 'f', ('time', 'lat', 'lon'))
+varr[:,:,:] = datat_d[:,:,:]
 
 ncfile.close()
 
 
-cont_m = 0
-for i in list_data:
-    if f'.atmos_monthly.nc' in i:
-        cont_m = cont_m + 1
-        data_i_nc = Dataset(f'{path_data}/output/{i}')
-        datat_i = np.array(data_i_nc['temp'])  #(time, pfull, lat, lon) 
-
-        if cont_m == 1: datat_m = datat_i
-        else: datat_m = np.concatenate((datat_m, datat_i), axis = 0)
 
 
-# Saving monthly files
-time = np.arange(1, datat_m.shape[0], 1)
-nc_name = f't.atmos_monthly.nc'
+for num, i in enumerate(list_begindates): 
+    if f'{i}.atmos_daily.nc' in list_data:        
+        data_i_nc = Dataset(f'{path_data}/output/{i}.atmos_daily.nc')
+        datat_i = np.array(data_i_nc['vcomp'])[:,pos_300,:,:]  #(time, pfull, lat, lon) 
+
+        if num == 0: datat_d = datat_i
+        #elif num == 16: break
+        else: datat_d = np.concatenate((datat_d, datat_i), axis = 0)
+     
+
+# Saving daily files
+time = np.arange(1, datat_d.shape[0]+1, 1)
+nc_name = f'v.atmos_daily.nc'
 ncfile = Dataset(f'{path_output_final}{nc_name}', 'w')
 
-ncfile.createDimension('lat', len(lat_m))
+ncfile.createDimension('lat', len(lat_d))
 ncfile.createDimension('lon', len(lons))
 ncfile.createDimension('time', len(time))
-ncfile.createDimension('lev', len(levels))
 
 var_lats = ncfile.createVariable('lat', 'f', ('lat'))
 var_lons = ncfile.createVariable('lon', 'f', ('lon'))
 var_time = ncfile.createVariable('time', 'f', ('time'))
-var_lev = ncfile.createVariable('lev', 'f', ('lev'))
 
-var_lats[:] = lat_m
+var_lats[:] = lat_d
 var_lons[:] = lons
 var_time[:] = time
-var_lev[:] = levels
 
-varr = ncfile.createVariable('temp', 'f', ('time', 'lev', 'lat', 'lon'))
-varr[:,:,:,:] = datat_m[:,:,:,:]
+varr = ncfile.createVariable('v', 'f', ('time', 'lat', 'lon'))
+varr[:,:,:] = datat_d[:,:,:]
+
 ncfile.close()
-       
-
 
